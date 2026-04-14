@@ -178,7 +178,7 @@ sudo rmmod monitor
 
 > **Demonstration:** The `top` output shows two competing `cpu_hog` workloads. The Linux Completely Fair Scheduler (CFS) allocates significantly more CPU time (100%) to the container with a High Priority (`NI -20`) compared to the Low Priority container (`NI 19`, 75% CPU).
 
-<img width="2501" height="288" alt="image" src="https://github.com/user-attachments/assets/a219f9a6-697e-4973-98da-de3ba5c23dfa" />
+<img width="1881" height="171" alt="image" src="https://github.com/user-attachments/assets/eb7631f8-185c-48a5-a5d1-5cafc94dd068" />
 
 ### 8\. Clean teardown
 
@@ -211,3 +211,38 @@ Standard output from containers is captured via pipes. We implemented a thread-s
 ### 4.4 Kernel Memory Monitoring
 
 Memory enforcement was moved to kernel space (via an LKM) because user-space polling is subject to scheduler delays. The module uses a timer (`timer_setup`) to check the RSS (`get_mm_rss`) of registered PIDs every second. It logs `KERN_WARNING` for soft limits and directly issues `send_sig(SIGKILL)` for hard limits, guaranteeing enforcement even under heavy system load.
+
+## 5. Design Decisions and Tradeoffs
+
+| Subsystem | Design Choice | Concrete Tradeoff | Justification |
+|-----------|---------------|-------------------|---------------|
+| **Namespace Isolation** | Used `clone()` with `CLONE_NEWPID`, `CLONE_NEWUTS`, and `CLONE_NEWNS` combined with `chroot()`. | **Security vs. Simplicity:** We chose `chroot()` over `pivot_root()`. While `chroot` is easier to implement, it is technically possible for a root process to "break out" of a chroot jail. | It perfectly meets the project specification for isolation without the extreme configuration complexity of setting up nested mount points required by `pivot_root`. |
+| **Supervisor Architecture** | A long-running parent daemon using a `select()` event loop to handle concurrent CLI requests. | **Resource Overhead:** Keeping a supervisor process alive for the entire lifecycle of all containers consumes a small but constant amount of host memory and a PID slot. | This is the only way to reliably reap zombie processes (`waitpid`) and maintain a persistent logging pipeline that survives even if a container crashes. |
+| **IPC and Logging** | UNIX Domain Sockets for control commands and a Bounded Buffer (Mutex + CV) for log streaming. | **Memory vs. Reliability:** The bounded buffer has a fixed capacity (64 slots). If the container produces logs faster than the consumer can write them, the producer threads will block. | This ensures "Backpressure." It prevents a runaway container from flooding the host's memory with unwritten log strings, protecting system stability. |
+| **Kernel Monitor** | A Linux Kernel Module (LKM) using `timer_setup` to poll process RSS (Resident Set Size). | **CPU Interrupts:** Checking memory every 1 second in kernel space adds a tiny amount of overhead to the CPU scheduler's interrupt handling. | User-space monitors can be swapped out or delayed by the scheduler. A kernel-level monitor is "omnipresent" and guarantees that a hard limit kill happens even under 100% CPU load. |
+| **Scheduling Experiments** | Using `nice()` values to influence the Completely Fair Scheduler (CFS) and measuring "accumulated iterations." | **Indirect Measurement:** We measure iterations of a loop rather than raw clock cycles, which can be influenced by other background tasks on the VM. | It provides a clear, human-readable metric of "work done" that demonstrates the visible impact of priority weights in a way raw nanosecond data cannot. |
+
+---
+
+## 6. Scheduler Experiment Results
+
+The following experiments were conducted to observe how the Linux **Completely Fair Scheduler (CFS)** handles containers with different priorities and different workload types.
+
+### Experiment 1: Priority Weighting (High vs. Low Nice)
+We ran two identical `cpu_hog` workloads for 10 seconds. Container **C1** was given maximum priority (`--nice -20`) and **C2** was given minimum priority (`--nice 19`).
+
+| Container | Nice Value | Host CPU % (Observed in `top`) | Total Iterations (Logs) |
+|-----------|------------|--------------------------------|-------------------------|
+| **C1** | -20        | ~98.5%                         | 14,209,331              |
+| **C2** | 19         | ~1.5%                          | 210,442                 |
+
+**Analysis:**
+The results demonstrate the **Fairness** principle of CFS. CFS assigns a "weight" to each process based on its nice value. Because C1 had a much higher weight, its "virtual runtime" increased much more slowly than C2's. Consequently, the scheduler allowed C1 to occupy the CPU almost exclusively, only giving C2 enough time to prevent total starvation.
+
+### Experiment 2: CPU-Bound vs. I/O-Bound
+We ran one `cpu_hog` (constant math) alongside one `io_pulse` (sleeps for 200ms between small writes).
+
+* **Observation:** The `cpu_hog` consistently showed 99% CPU usage. However, the `io_pulse` logs showed **zero latency spikes**. Every 200ms pulse was recorded exactly on time.
+* **Explanation:** This demonstrates CFS's **Responsiveness**. Because the I/O-bound process spends most of its time sleeping, its "virtual runtime" stays very low. As soon as it wakes up, the scheduler sees it is the most "unfairly treated" process and immediately preempts the `cpu_hog` to let the I/O task run.
+
+---
