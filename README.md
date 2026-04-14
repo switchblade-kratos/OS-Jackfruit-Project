@@ -25,7 +25,7 @@ sudo apt install -y build-essential linux-headers-$(uname -r) git
 ### Clone and build
 
 ```bash
-git clone [https://github.com/](https://github.com/)<your-username>/OS-Jackfruit.git
+git clone https://github.com/switchblade-kratos/OS-Jackfruit-Project.git
 cd OS-Jackfruit/boilerplate
 make
 ```
