@@ -140,20 +140,27 @@ sudo rmmod monitor
 
 > **Demonstration:** Two containers (`alpha` and `beta`) are running simultaneously under a single supervisor process.
 
+<img width="2456" height="320" alt="image" src="https://github.com/user-attachments/assets/048285ac-c7bc-472c-ac38-d92861bf0d4c" />
 
 ### 2\. Metadata tracking
 
 > **Demonstration:** The `engine ps` command displays the supervisor's internal metadata table, actively tracking each container's ID, host PID, State, and assigned Memory Limits.
 
+<img width="1517" height="986" alt="image" src="https://github.com/user-attachments/assets/9d43fd38-e16c-44cf-9cc9-a439b8117744" />
 
 ### 3\. Bounded-buffer logging
 
 > **Demonstration:** The supervisor successfully captures stdout from the container via a pipe, routes it through producer/consumer threads using a bounded buffer, and streams the log file contents back to the user upon running `engine logs`.
 
+<img width="1911" height="1055" alt="image" src="https://github.com/user-attachments/assets/829346c7-0796-4f2d-91d9-9e63ab7fbb51" />
 
 ### 4\. CLI and IPC
 
 > **Demonstration:** The CLI issues a `stop` command over the UNIX domain socket (`/tmp/mini_runtime.sock`). The supervisor successfully receives the IPC control request, kills the container, and sends a status response back to the CLI.
+
+<img width="1255" height="229" alt="image" src="https://github.com/user-attachments/assets/5d25edae-b0cf-4d0e-a589-ddb2286f4af9" />
+
+<img width="1439" height="280" alt="image" src="https://github.com/user-attachments/assets/2dac96d9-465c-4f3d-851a-614318c4ab94" />
 
 ### 5\. Soft-limit warning
 
