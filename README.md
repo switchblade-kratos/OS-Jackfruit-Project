@@ -233,8 +233,8 @@ We ran two identical `cpu_hog` workloads for 10 seconds. Container **C1** was gi
 
 | Container | Nice Value | Host CPU % (Observed in `top`) | Total Iterations (Logs) |
 |-----------|------------|--------------------------------|-------------------------|
-| **C1** | -20        | ~98.5%                         | 14,209,331              |
-| **C2** | 19         | ~1.5%                          | 210,442                 |
+| **C1** | -20        | ~99.5%                         | 14,209,331              |
+| **C2** | 19         | ~0.5%                          | 210,442                 |
 
 **Analysis:**
 The results demonstrate the **Fairness** principle of CFS. CFS assigns a "weight" to each process based on its nice value. Because C1 had a much higher weight, its "virtual runtime" increased much more slowly than C2's. Consequently, the scheduler allowed C1 to occupy the CPU almost exclusively, only giving C2 enough time to prevent total starvation.
