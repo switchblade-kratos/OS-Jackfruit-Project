@@ -166,17 +166,27 @@ sudo rmmod monitor
 
 > **Demonstration:** The `dmesg` output shows the custom kernel module (`monitor.ko`) logging a `SOFT LIMIT` warning when the container's RSS memory usage exceeds the configured threshold.
 
+<img width="2219" height="224" alt="image" src="https://github.com/user-attachments/assets/50c84926-9406-4b09-80f6-70eb70378cc2" />
+
 ### 6\. Hard-limit enforcement
 
 > **Demonstration:** `dmesg` shows the kernel module sending `SIGKILL` after the hard limit is breached. The subsequent `engine ps` output confirms the supervisor caught the signal and properly updated the container's metadata state to `hard_limit_killed`.
+
+<img width="1465" height="314" alt="image" src="https://github.com/user-attachments/assets/913a3480-a28e-4723-86a4-43b22f9b5bf2" />
 
 ### 7\. Scheduling experiment
 
 > **Demonstration:** The `top` output shows two competing `cpu_hog` workloads. The Linux Completely Fair Scheduler (CFS) allocates significantly more CPU time (100%) to the container with a High Priority (`NI -20`) compared to the Low Priority container (`NI 19`, 75% CPU).
 
+<img width="2501" height="288" alt="image" src="https://github.com/user-attachments/assets/a219f9a6-697e-4973-98da-de3ba5c23dfa" />
+
 ### 8\. Clean teardown
 
 > **Demonstration:** `ps aux | grep defunct` proves no zombie processes are left behind (successful `waitpid` reaping). The supervisor cleanly drains the bounded buffer, joins all threads, and exits cleanly upon receiving `SIGINT`.
+
+<img width="711" height="88" alt="image" src="https://github.com/user-attachments/assets/0b59c3cd-4dbc-49ba-9bc0-063919b5de16" />
+
+<img width="1983" height="148" alt="image" src="https://github.com/user-attachments/assets/97da7c46-83fe-461f-900b-bef0263668a5" />
 
 -----
 
